@@ -1,21 +1,23 @@
 // Phase 2: one page per candidate: details, validated stage changes, the
 // document center (checklist + signed URLs), activity history, linked tasks
-// and appointments, and the Hermes "Build CV with AI" hook (Phase 5).
+// and appointments, and the Hermes "Build CV with AI" hook (Phase 5) whose
+// finished CVs land in the CV drafts tab for one-click approval.
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Mail, Phone, Globe, Briefcase, Bot, FileText, History, ClipboardList, User, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, Mail, Phone, Globe, Briefcase, Bot, FileText, FileCheck, History, ClipboardList, User, AlertTriangle } from 'lucide-react'
 import Layout from '../components/layout/Layout'
 import Button from '../components/ui/Button'
 import { SkeletonText, SkeletonCards } from '../components/ui/Skeleton'
 import StatusDropdown from '../components/candidates/StatusDropdown'
 import DocumentCenter from '../components/candidates/DocumentCenter'
 import ActivityTimeline from '../components/candidates/ActivityTimeline'
+import CvDraftsPanel from '../components/candidates/CvDraftsPanel'
 import { useToast } from '../contexts/ToastContext'
 import { isSupabaseConfigured } from '../supabase/client'
 import { getCandidateById, changeCandidateStage } from '../services/candidateService'
 import { getTasks } from '../services/taskService'
 import { getAppointments } from '../services/appointmentService'
-import { enqueueAutomationJob, getAutomationJobs, isJobOpen } from '../services/automationService'
+import { enqueueAutomationJob, getAutomationJobs, listAutomationJobs, isJobOpen } from '../services/automationService'
 import { logActivity } from '../services/activityService'
 import { demoCandidatesList } from '../services/demoData'
 import { normalizeStage } from '../utils/constants'
@@ -24,6 +26,7 @@ import { transitionError } from '../utils/stageTransitions'
 const TABS = [
   { key: 'overview', label: 'Overview', icon: User },
   { key: 'documents', label: 'Documents', icon: FileText },
+  { key: 'cv', label: 'CV drafts', icon: FileCheck },
   { key: 'activity', label: 'History', icon: History },
   { key: 'work', label: 'Tasks & appointments', icon: ClipboardList },
 ]
@@ -138,13 +141,29 @@ export default function CandidateProfilePage() {
 
   useEffect(() => { load() }, [load])
 
+  // Resume showing an open cv_build job after a reload.
+  useEffect(() => {
+    if (!isSupabaseConfigured || !id) return undefined
+    let active = true
+    listAutomationJobs({ jobType: 'cv_build', limit: 50 })
+      .then((jobs) => {
+        const latest = jobs.find((j) => j.payload?.candidate_id === id)
+        if (active && latest && isJobOpen(latest)) setCvJob(latest)
+      })
+      .catch(() => {})
+    return () => { active = false }
+  }, [id])
+
   // Poll the Hermes cv_build job until it finishes.
   useEffect(() => {
     if (!cvJob || !isJobOpen(cvJob)) return undefined
     const timer = window.setInterval(async () => {
       try {
         const [fresh] = await getAutomationJobs([cvJob.id])
-        if (fresh) setCvJob(fresh)
+        if (fresh) {
+          setCvJob(fresh)
+          if (!isJobOpen(fresh)) setHistoryKey((k) => k + 1)
+        }
       } catch { /* keep polling */ }
     }, 5000)
     return () => window.clearInterval(timer)
@@ -216,7 +235,9 @@ export default function CandidateProfilePage() {
   }
 
   const role = candidate.job_title || candidate.work_position || candidate.position
-  const cvLabel = cvJob ? { pending: 'CV queued…', claimed: 'Hermes is building the CV…', done: 'CV ready: see CV drafts', failed: 'CV build failed, retry' }[cvJob.status] : null
+  const cvLabel = cvJob
+    ? { pending: 'CV queued for Hermes…', claimed: 'Hermes is building the CV…', done: 'CV ready for review', failed: `CV build failed${cvJob.result?.error ? `: ${cvJob.result.error}` : ''}. You can retry.` }[cvJob.status]
+    : null
 
   return (
     <Layout title="Candidate">
@@ -248,7 +269,14 @@ export default function CandidateProfilePage() {
               </Button>
             </div>
           </div>
-          {cvLabel && <p role="status" className="mt-3 text-xs text-primary">{cvLabel}</p>}
+          {cvLabel && (
+            <p role="status" className={`mt-3 text-xs ${cvJob?.status === 'failed' ? 'text-red-600' : 'text-primary'}`}>
+              {cvLabel}
+              {cvJob?.status === 'done' && tab !== 'cv' && (
+                <button type="button" onClick={() => selectTab('cv')} className="ml-2 font-medium underline">Open CV drafts</button>
+              )}
+            </p>
+          )}
         </section>
 
         <div role="tablist" aria-label="Candidate sections" className="flex gap-1 overflow-x-auto rounded-xl bg-white p-1 shadow-sm">
@@ -288,6 +316,7 @@ export default function CandidateProfilePage() {
             </div>
           )}
           {tab === 'documents' && <DocumentCenter candidateId={candidate.id} onChanged={() => setHistoryKey((k) => k + 1)} />}
+          {tab === 'cv' && <CvDraftsPanel candidateId={candidate.id} refreshKey={historyKey} onChanged={() => setHistoryKey((k) => k + 1)} />}
           {tab === 'activity' && <ActivityTimeline candidateId={candidate.id} refreshKey={historyKey} />}
           {tab === 'work' && <WorkTab candidateId={candidate.id} />}
         </section>
