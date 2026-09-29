@@ -2,7 +2,7 @@
 // ENQUEUES and READS jobs; Hermes claims/completes them via the MCP server
 // with service_role. No AI keys or model calls ever live in the frontend.
 import { supabase, isSupabaseConfigured } from '../supabase/client'
-import { AUTOMATION_JOB_TYPES } from '../utils/constants'
+import { AUTOMATION_JOB_TYPES, JOB_PAYLOAD_REQUIRED } from '../utils/constants'
 
 const TABLE = 'automation_jobs'
 
@@ -17,6 +17,9 @@ export async function enqueueAutomationJob(jobType, payload = {}) {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
     throw new Error('Job payload must be an object')
   }
+  // Same minimum contract the MCP server enforces (docs/HERMES-INTEGRATION.md).
+  const missing = (JOB_PAYLOAD_REQUIRED[jobType] || []).filter((key) => payload[key] === undefined || payload[key] === null || payload[key] === '')
+  if (missing.length) throw new Error(`${jobType} job is missing: ${missing.join(', ')}`)
   if (!isSupabaseConfigured) {
     throw new Error('Demo mode: agent jobs need a live Supabase connection')
   }
