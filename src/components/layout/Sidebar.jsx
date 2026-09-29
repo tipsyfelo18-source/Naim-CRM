@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import {
-  LayoutDashboard, Users, Folder, UserPlus, Eye, CheckSquare, SquareKanban,
+  LayoutDashboard, Users, Folder, UserPlus, Eye, CheckSquare, SquareKanban, Target,
   Calendar, Briefcase, Plus, BarChart3, Settings, Trash2, Menu, X, FileEdit, MessageCircle,
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
@@ -10,6 +10,7 @@ export const NAV_ITEMS = [
   { to: '/dashboard', page: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/candidates', page: 'candidates', label: 'Candidates', icon: Users },
   { to: '/pipeline', page: 'pipeline', label: 'Pipeline', icon: SquareKanban },
+  { to: '/leads', page: 'leads', label: 'Leads', icon: Target },
   { to: '/cv-builder', page: 'cv-builder', label: 'CV Builder', icon: FileEdit },
   { to: '/documents', page: 'documents', label: 'Documents', icon: Folder },
   { to: '/associates', page: 'associates', label: 'Associates', icon: UserPlus },

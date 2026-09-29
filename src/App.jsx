@@ -1,4 +1,4 @@
-import { lazy, Suspense, useLayoutEffect } from 'react'
+import { Component, lazy, Suspense, useLayoutEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigationType } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ToastProvider } from './contexts/ToastContext'
@@ -9,6 +9,11 @@ import DemoModeBanner from './components/system/DemoModeBanner'
 import ErrorBoundary from './components/system/ErrorBoundary'
 import { RouteSkeleton } from './components/ui/Skeleton'
 import { canAccessPage } from './utils/permissions'
+import { installOriginTrialToken } from './webmcp/registerTools'
+
+// Phase 3.5: the WebMCP origin-trial token (public, origin-bound) must be in
+// the document before any WebMCP feature detection runs.
+installOriginTrialToken(import.meta.env.VITE_WEBMCP_ORIGIN_TRIAL_TOKEN)
 
 // Phase 2: route-level code splitting. Each page is its own chunk.
 const LoginPage = lazy(() => import('./pages/LoginPage'))
@@ -16,6 +21,7 @@ const DashboardPage = lazy(() => import('./pages/DashboardPage'))
 const CandidatesPage = lazy(() => import('./pages/CandidatesPage'))
 const CandidateProfilePage = lazy(() => import('./pages/CandidateProfilePage'))
 const PipelinePage = lazy(() => import('./pages/PipelinePage'))
+const LeadsPage = lazy(() => import('./pages/LeadsPage'))
 const JobsPage = lazy(() => import('./pages/JobsPage'))
 const AppointmentsPage = lazy(() => import('./pages/AppointmentsPage'))
 const TasksPage = lazy(() => import('./pages/TasksPage'))
@@ -28,6 +34,8 @@ const JobGeneratorPage = lazy(() => import('./pages/JobGeneratorPage'))
 const ReceptionistViewPage = lazy(() => import('./pages/ReceptionistViewPage'))
 const WhatsAppPage = lazy(() => import('./pages/WhatsAppPage'))
 const RecycleBinPage = lazy(() => import('./pages/RecycleBinPage'))
+// Phase 3.5: WebMCP bridge (own chunk; a no-op in browsers without WebMCP).
+const WebMCPBridge = lazy(() => import('./webmcp/WebMCPBridge'))
 
 // path -> [page component, permission key]
 export const PROTECTED_ROUTES = [
@@ -35,6 +43,7 @@ export const PROTECTED_ROUTES = [
   ['/candidates', CandidatesPage, 'candidates'],
   ['/candidates/:id', CandidateProfilePage, 'candidates'],
   ['/pipeline', PipelinePage, 'pipeline'],
+  ['/leads', LeadsPage, 'leads'],
   ['/jobs', JobsPage, 'jobs'],
   ['/appointments', AppointmentsPage, 'appointments'],
   ['/tasks', TasksPage, 'tasks'],
@@ -48,6 +57,26 @@ export const PROTECTED_ROUTES = [
   ['/whatsapp', WhatsAppPage, 'whatsapp'],
   ['/recycle-bin', RecycleBinPage, 'recycle-bin'],
 ]
+
+// A WebMCP failure must never affect the CRM itself: render nothing instead.
+class SilentBoundary extends Component {
+  constructor(props) {
+    super(props)
+    this.state = { failed: false }
+  }
+
+  static getDerivedStateFromError() {
+    return { failed: true }
+  }
+
+  componentDidCatch(error) {
+    console.warn('WebMCP bridge disabled:', error?.message || error)
+  }
+
+  render() {
+    return this.state.failed ? null : this.props.children
+  }
+}
 
 function NoAccess() {
   return (
@@ -118,6 +147,11 @@ export default function App() {
         <ToastProvider>
           <NotificationsProvider>
             <AppRoutes />
+            <SilentBoundary>
+              <Suspense fallback={null}>
+                <WebMCPBridge />
+              </Suspense>
+            </SilentBoundary>
             {isDemoMode && <DemoModeBanner />}
           </NotificationsProvider>
         </ToastProvider>
