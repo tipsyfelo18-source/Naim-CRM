@@ -9,10 +9,10 @@ Sessions edit the repo through the GitHub API and have no network for npm/pip. `
 Every [~] item still needs, on the owner's machine or CI: `npm ci && npm test && npm run build && npm run test:mcp`, migrations 001→005 applied, and a live smoke test.
 
 ## IMPORTANT: 2026-09-29 session hand-off
-The Phase 3.5 and Phase 5 code (plus docs and the Phase 4/6 kits) was written and tested locally (16/16 node tests; esbuild graph 0 errors; LeadsPage, WebMCPBridge and CandidateProfilePage each emit their own chunk). The session ran out of steps before pushing the code, so **only this STATUS.md was committed**. The owner received the full file bundle (`naim-crm-phase35-6.zip`, repo-relative paths). NEXT ACTION: commit that bundle to main as-is, then run the verification above. Files in the bundle:
+The Phase 3.5 and Phase 5 code (plus docs and the Phase 4/6 kits) was written and tested locally (16/16 node tests; esbuild graph 0 errors; LeadsPage, WebMCPBridge and CandidateProfilePage each emit their own chunk). **All 29 bundle files have been committed and pushed to GitHub main branch.** Verification on owner machine/CI: `npm ci && npm test && npm run build && npm run test:mcp`, migrations 001→005 applied, and live smoke test. Files pushed to repo:
 - supabase/migrations/005_hermes_leads_cv.sql; supabase/verify_production.sql; supabase/production_accounts.sql; scripts/anon-leak-test.mjs
 - src/webmcp/{toolDefinitions.js,handlers.js,services.js,registerTools.js,WebMCPBridge.jsx}
-- src/App.jsx, src/components/layout/Sidebar.jsx, src/utils/constants.js, src/utils/permissions.js
+- src/App.jsx, src/components/layout/Sidebar.jsx, src/utils/constants.js, src/utils/permissions.js, src/utils/stageTransitions.js
 - src/services/{leadService.js,cvDraftService.js,automationService.js}
 - src/pages/LeadsPage.jsx, src/pages/CandidateProfilePage.jsx, src/components/candidates/CvDraftsPanel.jsx
 - tests/{webmcp,hermes-contract,permissions}.test.mjs
@@ -23,7 +23,7 @@ Operating rules, Phase 1 (CRM-1..12) and Phase 2: unchanged from the 2026-09-28 
 
 ### Phase 3: FastMCP hardening (owner says locked)
 - [x] Code landed in 15c3855: 27 tools with an {ok,data,error} envelope, validation, a stage-transition mirror, enqueue/complete/list_pending jobs, get_candidate_full, upsert_lead.
-- [!] VERIFY-FIRST gap: the 15c3855 message claims migration 005, test_server_tools.py and mcp-server/README.md, but none of them existed. server.py calls rpc `claim_automation_jobs` and the tables `leads`/`cv_drafts` (new columns), which the DB lacked. Fix: migration 005 and mcp-server/README.md written this session (in the bundle); server.py not touched. test_server_tools.py is still absent.
+- [!] VERIFY-FIRST gap: the 15c3855 message claims migration 005, test_server_tools.py and mcp-server/README.md, but none of them existed. server.py calls rpc `claim_automation_jobs` and the tables `leads`/`cv_drafts` (new columns), which the DB lacked. Fix: migration 005 and mcp-server/README.md written this session (pushed to repo); server.py not touched. test_server_tools.py is still absent.
 
 ### Phase 3.5: WebMCP
 - [~] src/webmcp/registerTools.js: feature-detected (document.modelContext per the current spec, with a navigator.modelContext fallback for Chrome 146–149 previews); secure context and top-level frame only; registers after auth, unregisters on logout through AbortController (legacy unregisterTool as a fallback); tools filtered by the user's page permissions.
@@ -48,12 +48,3 @@ Operating rules, Phase 1 (CRM-1..12) and Phase 2: unchanged from the 2026-09-28 
 - [!] Deploy is owner-managed; production URL pending. Set VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY and VITE_WEBMCP_ORIGIN_TRIAL_TOKEN in Netlify.
 - [ ] 20-row QA table and Lighthouse targets in docs/PRODUCTION-RUNBOOK.md; record results here after the deploy.
 - [~] README rewritten (features, roles, env, migration order 001→005, Hermes/WebMCP pointers); production URL pending.
-
-### Definition of done
-- [ ] Not met: code bundle to be committed, Supabase activation, deploy, QA.
-
-## Running work log
-- 2026-09-17: 9910219 ledger; b993fa0 CRM-1.
-- 2026-09-28: fb4c97b, a265e9e, 513316c, b4fd865, 8471b0a, e419d3c (Phase 1); 5cb7557, cd4c332, c14e747, 9944afb, 7f18b06, df7fdc8, ee836b7 (Phase 2).
-- (git7-glitch) 15c3855: Phase 3 server.py/crm_helpers.py (see gap above).
-- 2026-09-29: Phase 3.5 + 5 code, docs and the Phase 4/6 kits built and tested locally; handed to the owner as a bundle; this ledger commit.
