@@ -151,14 +151,33 @@ export const RECRUITMENT_STAGES = [
   'Completed',
 ]
 
-// Hermes automation job contract (see docs/HERMES-INTEGRATION.md).
+// Hermes automation job contract (see docs/HERMES-INTEGRATION.md). Must match
+// AUTOMATION_JOB_TYPES / JOB_PAYLOAD_REQUIRED in mcp-server/crm_helpers.py
+// (tests/hermes-contract.test.mjs keeps them in lockstep).
 export const AUTOMATION_JOB_TYPES = ['cv_build', 'lead_enrich', 'whatsapp_send', 'doc_ocr', 'followup_sweep']
 export const AUTOMATION_JOB_STATUSES = ['pending', 'claimed', 'done', 'failed']
+export const JOB_PAYLOAD_REQUIRED = Object.freeze({
+  cv_build: ['candidate_id'],
+  lead_enrich: ['lead_id'],
+  whatsapp_send: ['to', 'message'],
+  doc_ocr: ['document_id'],
+  followup_sweep: [],
+})
+
+// Phase 5 leads (migration 005 leads_status_check; crm_helpers.LEAD_STATUSES).
+export const LEAD_STATUSES = ['new', 'contacted', 'qualified', 'converted', 'disqualified']
+export const LEAD_STATUS_LABELS = Object.freeze({
+  new: 'New', contacted: 'Contacted', qualified: 'Qualified', converted: 'Converted', disqualified: 'Disqualified',
+})
+
+// Phase 5 CV drafts (migration 005 cv_drafts_status_check; crm_helpers.CV_DRAFT_STATUSES).
+export const CV_DRAFT_STATUSES = ['draft', 'pending_review', 'approved', 'rejected']
 
 export const PAGE_ACCESS_OPTIONS = [
   'dashboard',
   'candidates',
   'pipeline',
+  'leads',
   'jobs',
   'appointments',
   'tasks',
